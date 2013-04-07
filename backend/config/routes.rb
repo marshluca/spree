@@ -31,8 +31,8 @@ Spree::Core::Engine.routes.append do
         get :shipping_method
       end
     end
-
   end
+
   get '/cart', :to => 'orders#edit', :as => :cart
   put '/cart', :to => 'orders#update', :as => :update_cart
   put '/cart/empty', :to => 'orders#empty', :as => :empty_cart
@@ -74,6 +74,7 @@ Spree::Core::Engine.routes.append do
       end
       member do
         get :clone
+        get :stock
       end
       resources :variants do
         collection do
@@ -111,10 +112,9 @@ Spree::Core::Engine.routes.append do
       end
     end
 
-    resource :inventory_settings
     resource :image_settings
 
-    resources :orders do
+    resources :orders, :except => [:show] do
       member do
         put :fire
         get :fire
@@ -179,6 +179,11 @@ Spree::Core::Engine.routes.append do
 
     resources :shipping_methods
     resources :shipping_categories
+    resources :stock_locations do
+      resources :stock_movements
+    end
+    resources :stock_movements
+    resources :stock_items, :only => :update
     resources :tax_rates
     resource  :tax_settings
 

@@ -54,36 +54,75 @@ To auto accept all prompts while running the install generator, pass -A as an op
 ```shell
 spree install my_store -A
 ```
-Using the Gem
+
+Using stable builds and bleeding edge
 -------------
 
-You can manually add Spree to your Rails 3.2.x application. Add Spree to
+To use a stable build of Spree, you can manually add Spree to your 
+Rails 3.2.x application. To use the 1-3-stable branch of Spree, add this line to
 your Gemfile.
 
 ```ruby
-gem 'spree', :git => 'git://github.com/spree/spree.git'
+gem 'spree', :github => 'spree/spree', :branch => '1-3-stable'
 ```
 
-Update your bundle
+Alternatively, if you want to use the bleeding edge version of Spree, use this
+line:
+
+```ruby
+gem 'spree', :github => 'spree/spree', :branch => 'master'
+```
+
+**Note: The master branch is not guaranteed to ever be in a fully functioning
+state. It is unwise to use this branch in a production system you care deeply
+about.**
+
+If you wish to have authentication included also, you will need to add the
+`spree_auth_devise` gem as well. Either this:
+
+```ruby
+gem 'spree_auth_devise', :github => 'spree/spree_auth_devise', :branch => '1-3-stable'
+```
+
+Or this:
+
+```ruby
+gem 'spree_auth_devise', :github => 'spree/spree_auth_devise', :branch => 'master'
+```
+
+Once you've done that, then you can install these gems using this command:
 
 ```shell
 bundle install
 ```
 
-Use the install generator to copy migrations, initializers and generate
-sample data.
+Use the install generator to set up Spree:
 
 ```shell
-rails g spree:install
+rails g spree:install --sample=false --seed=false
 ```
 
-You can avoid running migrations or generating seed and sample data
+At this point, if you are using spree_auth_devise you will need to change this line in
+`config/initializers/spree.rb`:
+
+```ruby
+Spree.user_class = "Spree::LegacyUser"
+```
+
+To this:
+
+```ruby
+Spree.user_class = "Spree::User"
+```
+
+You can avoid running migrations or generating seed and sample data by passing
+in these flags:
 
 ```shell
 rails g spree:install --migrate=false --sample=false --seed=false
 ```
 
-You can always perform the steps later.
+You can always perform the steps later by using these commands.
 
 ```shell
 bundle exec rake db:migrate
@@ -237,6 +276,11 @@ bundle exec rspec spec/models/state_spec.rb:7
 You can also enable fail fast in order to stop tests at the first failure
 ```shell
 FAIL_FAST=true bundle exec rspec spec/models/state_spec.rb
+```
+
+If you want to run the simplecov code coverage report
+```shell
+COVERAGE=true bundle exec rspec spec
 ```
 
 Contributing

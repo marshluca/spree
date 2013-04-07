@@ -48,7 +48,7 @@ module Spree
       variant = Spree::Variant.find(variant_id)
       if quantity > 0
         if check_stock_levels(variant, quantity)
-          @order.add_variant(variant, quantity, currency)
+          @order.contents.add(variant, quantity, currency)
         end
       end
     end
@@ -57,15 +57,8 @@ module Spree
       display_name = %Q{#{variant.name}}
       display_name += %Q{ (#{variant.options_text})} unless variant.options_text.blank?
 
-      if variant.available?
-        on_hand = variant.on_hand
-        if on_hand >= quantity || Spree::Config[:allow_backorders]
-          return true
-        else
-          errors.add(:base, %Q{There are only #{on_hand} of #{display_name.inspect} remaining.} + 
-                            %Q{ Please select a quantity less than or equal to this value.})
-          return false
-        end
+      if Stock::Quantifier.new(variant).can_supply? quantity
+        true
       else
         errors.add(:base, %Q{#{display_name.inspect} is out of stock.})
         return false

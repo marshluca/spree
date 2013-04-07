@@ -38,14 +38,21 @@ module Spree
 
       initializer "spree.register.calculators" do |app|
         app.config.spree.calculators.shipping_methods = [
-            Spree::Calculator::FlatPercentItemTotal,
-            Spree::Calculator::FlatRate,
-            Spree::Calculator::FlexiRate,
-            Spree::Calculator::PerItem,
-            Spree::Calculator::PriceSack]
+            Spree::Calculator::Shipping::FlatPercentItemTotal,
+            Spree::Calculator::Shipping::FlatRate,
+            Spree::Calculator::Shipping::FlexiRate,
+            Spree::Calculator::Shipping::PerItem,
+            Spree::Calculator::Shipping::PriceSack]
 
          app.config.spree.calculators.tax_rates = [
             Spree::Calculator::DefaultTax]
+      end
+
+      initializer "spree.register.stock_splitters" do |app|
+        app.config.spree.stock_splitters = [
+          Spree::Stock::Splitter::ShippingCategory,
+          Spree::Stock::Splitter::Backordered
+        ]
       end
 
       initializer "spree.register.payment_methods" do |app|

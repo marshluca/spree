@@ -19,7 +19,7 @@ module Spree
         if @order.update_attributes(object_params)
           # TODO: Replace with better code when we switch to strong_parameters
           # Also remove above user_id stripping
-          if current_api_user.has_spree_role?("admin")
+          if current_api_user.has_spree_role?("admin") && user_id.present?
             @order.associate_user!(Spree.user_class.find(user_id))
           end
           return if after_update_attributes
@@ -69,6 +69,14 @@ module Spree
           state_callback(:before)
         end
 
+        def current_currency
+          Spree::Config[:currency]
+        end
+
+        def ip_address
+          ''
+        end
+
         def raise_insufficient_quantity
           respond_with(@order, :default_template => 'spree/api/orders/insufficient_quantity')
         end
@@ -85,7 +93,7 @@ module Spree
 
         def before_delivery
           return if params[:order].present?
-          @order.shipping_method ||= (@order.rate_hash.first && @order.rate_hash.first[:shipping_method])
+          @order.create_proposed_shipments
         end
 
         def before_payment

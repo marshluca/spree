@@ -13,9 +13,12 @@
 
     <% if @order.has_step?("delivery") %>
       <div class="columns alpha four">
-        <h6><%= t(:shipping_method) %> <%= link_to "(#{t(:edit)})", checkout_state_path(:delivery) unless @order.completed? %></h6>
+        <h6><%= t(:shipments) %> <%= link_to "(#{t(:edit)})", checkout_state_path(:delivery) unless @order.completed? %></h6>
         <div class="delivery">
-          <%= order.shipping_method.name %>
+          <% order.shipments.each do |shipment| %>
+            <%= shipment.stock_location.name %>
+            <%= shipment.shipping_method.name %>
+          <% end %>
         </div>
         <%= render(:partial => 'spree/shared/shipment_tracking', :locals => {:order => @order}) if @order.shipped? %>
       </div>
@@ -64,7 +67,7 @@
           <%= truncated_product_description(item.variant.product) %>
           <%= "(" + item.variant.options_text + ")" unless item.variant.option_values.empty? %>
         </td>
-        <td data-hook="order_item_price" class="price"><span><%= item.variant.display_amount.to_html %></span></td>
+        <td data-hook="order_item_price" class="price"><span><%= item.single_money.to_html %></span></td>
         <td data-hook="order_item_qty"><%= item.quantity %></td>
         <td data-hook="order_item_total" class="total"><span><%= item.display_amount.to_html %></span></td>
       </tr>

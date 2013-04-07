@@ -5,12 +5,13 @@ describe "Checkout" do
   let!(:state) { create(:state, :name => "Victoria", :country => country) }
   let!(:shipping_method) do
     shipping_method = create(:shipping_method)
-    calculator = Spree::Calculator::PerItem.create!({:calculable => shipping_method}, :without_protection => true)
+    calculator = Spree::Calculator::Shipping::PerItem.create!({:calculable => shipping_method}, :without_protection => true)
     shipping_method.calculator = calculator
     shipping_method.save
 
     shipping_method
   end
+  let!(:stock_location) { create(:stock_location) }
 
   let!(:payment_method) { create(:payment_method) }
 
@@ -18,30 +19,11 @@ describe "Checkout" do
     before(:each) do
       Spree::Product.delete_all
       @product = create(:product, :name => "RoR Mug")
-      @product.on_hand = 1
       @product.save
+
+      stock_location.stock_items.update_all(count_on_hand: 1)
+
       create(:zone)
-    end
-
-    context "when backordering is disabled" do
-      before(:each) do
-        configure_spree_preferences do |config|
-          config.allow_backorders = false
-        end
-      end
-
-      it "should warn the user about out of stock items" do
-        visit spree.root_path
-        click_link "RoR Mug"
-        click_button "add-to-cart-button"
-
-        @product.on_hand = 0
-        @product.save
-
-        click_button "Checkout"
-
-        within(:css, "span.out-of-stock") { page.should have_content("Out of Stock") }
-      end
     end
 
     context "defaults to use billing address" do
@@ -74,79 +56,10 @@ describe "Checkout" do
       end
     end
 
-    #regression test for #2694
-    context "doesn't allow bad credit card numbers" do
-      before(:each) do
-        order = OrderWalkthrough.up_to(:delivery)
-        order.stub :confirmation_required? => true
-        order.stub(:available_payment_methods => [ create(:bogus_payment_method, :environment => 'test') ])
-        order.reload
-        user = create(:user)
-        order.user = user
-        order.update!
-
-        Spree::CheckoutController.any_instance.stub(:current_order => order)
-        Spree::CheckoutController.any_instance.stub(:try_spree_current_user => user)
-        Spree::CheckoutController.any_instance.stub(:skip_state_validation? => true)
-
-      end
-      it "redirects to payment page" do
-        visit spree.checkout_state_path(:delivery)
-        click_button "Save and Continue"
-        choose "Credit Card"
-        fill_in "Card Number", :with => '123'
-        fill_in "Card Code", :with => '123'
-        click_button "Save and Continue"
-        click_button "Place Order"
-        page.should have_content("Payment could not be processed")
-        click_button "Place Order"
-        page.should have_content("Payment could not be processed")
-      end
-    end
-
-    context "and likes to double click buttons" do
-      before(:each) do
-        user = create(:user)
-
-        order = OrderWalkthrough.up_to(:delivery)
-        order.stub :confirmation_required? => true
-
-        order.reload
-        order.user = user
-        order.update!
-
-        Spree::CheckoutController.any_instance.stub(:current_order => order)
-        Spree::CheckoutController.any_instance.stub(:try_spree_current_user => user)
-        Spree::CheckoutController.any_instance.stub(:skip_state_validation? => true)
-      end
-
-      it "prevents double clicking the payment button on checkout", :js => true do
-        visit spree.checkout_state_path(:payment)
-
-        # prevent form submit to verify button is disabled
-        page.execute_script("$('#checkout_form_payment').submit(function(){return false;})")
-
-        page.should_not have_selector('input.button[disabled]')
-        click_button "Save and Continue"
-        page.should have_selector('input.button[disabled]')
-      end
-
-      it "prevents double clicking the confirm button on checkout", :js => true do
-        visit spree.checkout_state_path(:confirm)
-
-        # prevent form submit to verify button is disabled
-        page.execute_script("$('#checkout_form_confirm').submit(function(){return false;})")
-
-        page.should_not have_selector('input.button[disabled]')
-        click_button "Place Order"
-        page.should have_selector('input.button[disabled]')
-      end
-    end
-
     # Regression test for #1596
     context "full checkout" do
       before do
-        @product.shipping_category = shipping_method.shipping_category
+        @product.shipping_category = shipping_method.shipping_categories.first
         @product.save!
       end
 
@@ -155,8 +68,8 @@ describe "Checkout" do
         click_link "RoR Mug"
         click_button "add-to-cart-button"
         click_button "Checkout"
-        Spree::Order.last.update_column(:email, "ryan@spreecommerce.com")
 
+        fill_in "order_email", :with => "ryan@spreecommerce.com"
         address = "order_bill_address_attributes"
         fill_in "#{address}_firstname", :with => "Ryan"
         fill_in "#{address}_lastname", :with => "Bigg"
@@ -169,7 +82,80 @@ describe "Checkout" do
 
         click_button "Save and Continue"
         page.should_not have_content("undefined method `promotion'")
+
+        click_button "Save and Continue"
+        page.should have_content(shipping_method.name)
       end
     end
   end
+
+  #regression test for #2694
+  context "doesn't allow bad credit card numbers" do
+    before(:each) do
+      order = OrderWalkthrough.up_to(:delivery)
+      order.stub :confirmation_required? => true
+      order.stub(:available_payment_methods => [ create(:bogus_payment_method, :environment => 'test') ])
+
+      user = create(:user)
+      order.user = user
+      order.update!
+
+      Spree::CheckoutController.any_instance.stub(:current_order => order)
+      Spree::CheckoutController.any_instance.stub(:try_spree_current_user => user)
+      Spree::CheckoutController.any_instance.stub(:skip_state_validation? => true)
+    end
+
+    it "redirects to payment page" do
+      visit spree.checkout_state_path(:delivery)
+      click_button "Save and Continue"
+      choose "Credit Card"
+      fill_in "Card Number", :with => '123'
+      fill_in "Card Code", :with => '123'
+      click_button "Save and Continue"
+      click_button "Place Order"
+      page.should have_content("Payment could not be processed")
+      click_button "Place Order"
+      page.should have_content("Payment could not be processed")
+    end
+  end
+
+  context "and likes to double click buttons" do
+    before(:each) do
+      user = create(:user)
+
+      order = OrderWalkthrough.up_to(:delivery)
+      order.stub :confirmation_required? => true
+
+      order.reload
+      order.user = user
+      order.update!
+
+      Spree::CheckoutController.any_instance.stub(:current_order => order)
+      Spree::CheckoutController.any_instance.stub(:try_spree_current_user => user)
+      Spree::CheckoutController.any_instance.stub(:skip_state_validation? => true)
+    end
+
+    it "prevents double clicking the payment button on checkout", :js => true do
+      visit spree.checkout_state_path(:payment)
+
+      # prevent form submit to verify button is disabled
+      page.execute_script("$('#checkout_form_payment').submit(function(){return false;})")
+
+      page.should_not have_selector('input.button[disabled]')
+      click_button "Save and Continue"
+      page.should have_selector('input.button[disabled]')
+    end
+
+    it "prevents double clicking the confirm button on checkout", :js => true do
+      visit spree.checkout_state_path(:confirm)
+
+      # prevent form submit to verify button is disabled
+      page.execute_script("$('#checkout_form_confirm').submit(function(){return false;})")
+
+      page.should_not have_selector('input.button[disabled]')
+      click_button "Place Order"
+      page.should have_selector('input.button[disabled]')
+    end
+  end
+
 end
