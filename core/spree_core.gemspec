@@ -22,10 +22,13 @@ Gem::Specification.new do |s|
 
   s.add_dependency 'acts_as_list', '= 0.1.9'
   s.add_dependency 'awesome_nested_set', '2.1.5'
+  s.add_dependency 'railties', '~> 3.2.9'
+  s.add_dependency 'activerecord', '~> 3.2.9'
+  s.add_dependency 'actionmailer', '~> 3.2.9'
   # Frozen to 0.13.0 due to: https://github.com/amatsuda/kaminari/pull/282
   s.add_dependency 'kaminari', '0.13.0'
 
-  s.add_dependency 'state_machine', '1.2.0'
+  s.add_dependency 'state_machine', '= 1.1.2'
   s.add_dependency 'ffaker', '~> 1.15.0'
   s.add_dependency 'paperclip', '~> 2.8.0'
   s.add_dependency 'aws-sdk', '~> 1.3.4'
