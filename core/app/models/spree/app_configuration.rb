@@ -15,6 +15,8 @@
 # a.get :color
 # a.preferred_color
 #
+require "spree/core/search/base"
+
 module Spree
   class AppConfiguration < Preferences::Configuration
 
@@ -39,7 +41,9 @@ module Spree
     preference :company, :boolean, default: false # Request company field for billing and shipping addr
     preference :create_inventory_units, :boolean, default: true # should only be false when track_inventory_levels is false, also disables RMA's
     preference :currency, :string, default: "USD"
+    preference :currency_decimal_mark, :string, default: "."
     preference :currency_symbol_position, :string, default: "before"
+    preference :currency_thousands_separator, :string, default: ","
     preference :display_currency, :boolean, default: false
     preference :default_country_id, :integer
     preference :default_meta_description, :string, default: 'Spree demo site'
